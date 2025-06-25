@@ -32,12 +32,12 @@ def login(username: str, password: str) -> Optional[str]:
     #  3. Prepare the data payload with fields: `grant_type`, `username`, `password`,
     #     `scope`, `client_id`, and `client_secret`.
         data = {
-            "grant_type": "password",
+            "grant_type": "",
             "username": username,
             "password": password,
-            "scope": "read write",
-            "client_id": "image_classifier_client",
-            "client_secret": "secret_key",
+            "scope": "",
+            "client_id": "",
+            "client_secret": "",
         }
     #  4. Use `requests.post()` to send the API request with the URL, headers,
     #     and data payload.
@@ -48,9 +48,21 @@ def login(username: str, password: str) -> Optional[str]:
             json_response = response.json()
             token = json_response.get("access_token")
     #  7. Return the token if login is successful,  otherwise return `None`.
+            if token:
+                return token
+            else:
+                st.error("Login failed: No token received.")
+        else:
+            st.error(f"Login failed: {response.status_code} - {response.text}")
+            return None
     #  8. Test the function with various inputs.
-
-    return None
+    except requests.RequestException as e:
+        st.error(f"An error occurred while trying to log in: {e}")
+        return None
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
+        return None
+    
 
 
 def predict(token: str, uploaded_file: Image) -> requests.Response:
@@ -66,15 +78,30 @@ def predict(token: str, uploaded_file: Image) -> requests.Response:
     """
     # TODO: Implement the predict function
     # Steps to Build the `predict` Function:
+    try:
     #  1. Create a dictionary with the file data. The file should be a
     #     tuple with the file name and the file content.
+        uploaded_file.seek(0)  # Reset file pointer to the beginning
+        files = {
+            "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
+        }
     #  2. Add the token to the headers.
+        headers = {
+            "Authorization": f"Bearer {token}",
+        }
     #  3. Make a POST request to the predict endpoint.
+        url = f"{API_BASE_URL}/predict"
+        response = requests.post(url, headers=headers, files=files)
     #  4. Return the response.
-    response = None
-
-    return response
-
+        return response
+    except requests.RequestException as e:
+        st.error(f"Error during prediction: {e}")
+        class MockResponse:
+            def __init__(self):
+                self.status_code = 500
+            def json(self):
+                return {"error": "An error occurred during prediction."}
+        return MockResponse()
 
 def send_feedback(
     token: str, feedback: str, score: float, prediction: str, image_file_name: str
@@ -94,14 +121,35 @@ def send_feedback(
     """
     # TODO: Implement the send_feedback function
     # Steps to Build the `send_feedback` Function:
+    try: 
     # 1. Create a dictionary with the feedback data including feedback, score,
     #    predicted_class, and image_file_name.
-    # 2. Add the token to the headers.
-    # 3. Make a POST request to the feedback endpoint.
-    # 4. Return the response.
-    response = None
+        data = {
+            "feedback": feedback,
+            "score": score,
+            "predicted_class": prediction,
+            "image_file_name": image_file_name,
+        }
+        
 
-    return response
+    # 2. Add the token to the headers.
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+    # 3. Make a POST request to the feedback endpoint.
+        url = f"{API_BASE_URL}/feedback"
+        response = requests.post(url, headers=headers, json=data)
+    # 4. Return the response.
+        return response
+    except requests.RequestException as e:
+        st.error(f"Error sending feedback: {e}")
+        class MockResponse:
+            def __init__(self):
+                self.status_code = 500
+            def json(self):
+                return {"error": "An error occurred while sending feedback."}
+        return MockResponse()
 
 
 # Interfaz de usuario
