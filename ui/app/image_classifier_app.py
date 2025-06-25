@@ -20,15 +20,34 @@ def login(username: str, password: str) -> Optional[str]:
     # TODO: Implement the login function
     # Steps to Build the `login` Function:
     #  1. Construct the API endpoint URL using `API_BASE_URL` and `/login`.
+    try: 
+
+        url = f"{API_BASE_URL}/login"
     #  2. Set up the request headers with `accept: application/json` and
     #     `Content-Type: application/x-www-form-urlencoded`.
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
     #  3. Prepare the data payload with fields: `grant_type`, `username`, `password`,
     #     `scope`, `client_id`, and `client_secret`.
+        data = {
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "scope": "read write",
+            "client_id": "image_classifier_client",
+            "client_secret": "secret_key",
+        }
     #  4. Use `requests.post()` to send the API request with the URL, headers,
     #     and data payload.
+        response = requests.post(url, headers=headers, data=data)
     #  5. Check if the response status code is `200`.
+        if response.status_code == 200:
     #  6. If successful, extract the token from the JSON response.
-    #  7. Return the token if login is successful, otherwise return `None`.
+            json_response = response.json()
+            token = json_response.get("access_token")
+    #  7. Return the token if login is successful,  otherwise return `None`.
     #  8. Test the function with various inputs.
 
     return None
