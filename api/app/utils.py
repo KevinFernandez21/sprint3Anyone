@@ -20,9 +20,14 @@ def allowed_file(filename):
     """
     # TODO: Implement the allowed_file function
     # Current implementation will return True for any file
-    # Check if the file extension of the filename received is in the set of allowed extensions (".png", ".jpg", ".jpeg", ".gif")
-
-    return True
+    
+    allowed_extensions = {".png", ".jpg", ".jpeg", ".gif"}
+    if not filename:
+        return False
+    
+    file_extension = os.path.splitext(filename)[1].lower()
+# Check if the file extension of the filename received is in the set of allowed extensions (".png", ".jpg", ".jpeg", ".gif")
+    return file_extension in allowed_extensions
 
 
 async def get_file_hash(file):
@@ -43,11 +48,34 @@ async def get_file_hash(file):
     """
     # TODO: Implement the get_file_hash function
     # Current implementation will return the original file name.
-
+    
     # Read file content and generate md5 hash (Check: https://docs.python.org/3/library/hashlib.html#hashlib.md5)
+    if hasattr(file, 'read'):
+        original_filename = file.filename
 
+        if 'UploadFile'in str(type(file)):
+            # It's an async UploadFile
+            file_content = await file.read()
+            await file.seek(0)
+        else:
+            # It's a sync FileStorage
+            file_content = file.read()
+            file.seek(0)
+
+    elif isinstance(file, bytes):
+        file_content = file
+        original_filename = None
+    else:
+        original_filename = file
+        with open(file, 'rb') as f:
+            file_content = f.read()
     # Return file pointer to the beginning
-
+    md5_hash = hashlib.md5(file_content).hexdigest()
     # Add original file extension
+    if original_filename:
+        file_extension = os.path.splitext(original_filename)[1]
+        return md5_hash + file_extension
+    else:
+        return md5_hash
 
-    return file.filename
+

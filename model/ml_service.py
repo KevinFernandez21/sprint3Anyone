@@ -12,13 +12,18 @@ from tensorflow.keras.preprocessing import image
 # TODO
 # Connect to Redis and assign to variable `db``
 # Make use of settings.py module to get Redis settings like host, port, etc.
-db = None
+db = redis.Redis(
+    host=settings.REDIS_IP,
+    port=settings.REDIS_PORT,
+    db=settings.REDIS_DB_ID,
+    decode_responses=False
+)
 
 # TODO
 # Load your ML model and assign to variable `model`
 # See https://drive.google.com/file/d/1ADuBSE4z2ZVIdn66YDSwxKv-58U7WEOn/view?usp=sharing
 # for more information about how to use this model.
-model = None
+model = ResNet50(include_top=True, weights="imagenet")
 
 
 def predict(image_name):
@@ -40,14 +45,27 @@ def predict(image_name):
     class_name = None
     pred_probability = None
     # TODO: Implement the code to predict the class of the image_name
+    try: 
+        # Load image
+        img_path = os.path.join(settings.IMAGES_FOLDER, image_name)
+        # Preprocess the image for ResNet50
+        img_array = image.load_img(img_path, target_size=(224, 224))
+        img_array = image.img_to_array(img_array)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = preprocess_input(img_array)  
+        # Apply preprocessing (convert to numpy array, match model input dimensions (including batch) and use the resnet50 preprocessing)
+        predictions = model.predict(img_array)
 
-    # Load image
+        decoded_preds = decode_predictions(predictions, top=1)[0][0]
+        # Get predictions using model methods and decode predictions using resnet50 decode_predictions
+        _, class_name, pred_probability = decoded_preds
+        pred_probability = float(pred_probability)  # Convert to float
+        pred_probability = round(pred_probability, 2)  # Round to 2 decimal places
 
-    # Apply preprocessing (convert to numpy array, match model input dimensions (including batch) and use the resnet50 preprocessing)
-
-    # Get predictions using model methods and decode predictions using resnet50 decode_predictions
-    _, class_name, pred_probability = None
-
+    except Exception as e:
+        print(f"Error processing image {image_name}: {e}")
+        class_name = "unknown"
+        pred_probability = 0.0
     # Convert probabilities to float and round it
 
     return class_name, pred_probability
@@ -80,18 +98,38 @@ def classify_process():
         #       code with Redis making use of functions `brpop()` and `set()`.
         # TODO
         # Take a new job from Redis
+        while True:
+            try:
+                job = db.brpop(settings.REDIS_QUEUE, timeout=0)
+                if job is None:
+                    continue
 
-        # Decode the JSON data for the given job
+                job_data = job[1]  # Get the job data from the tuple returned by brpop
+                # Decode the JSON data for the given job
+                job_info = json.loads(job_data.decode('utf-8'))
 
-        # Important! Get and keep the original job ID
+                # Important! Get and keep the original job ID
+                job_id = job_info.get("job_id")
+                image_name = job_info.get("image_name")
 
-        # Run the loaded ml model (use the predict() function)
 
-        # Prepare a new JSON with the results
-        output = {"prediction": None, "score": None}
+                # Run the loaded ml model (use the predict() function)
+                class_name, pred_probability = predict(image_name)
+                # Prepare a new JSON with the results
+                output = {"prediction": class_name, "score": pred_probability}
+                
+                # Store the job results on Redis using the original
+                db.set(job_id, json.dumps(output))
 
-        # Store the job results on Redis using the original
-        # job ID as the key
+                print(f"Processed job {job_id}: {output}")
+                # job ID as the key
+            except Exception as e:
+                print(f"Error processing job: {e}")
+                if "job_id" in locals():
+                    # If job_id exists, store an error message
+                    output = {"prediction": "error", "score": 0.0}
+                    db.set(job_id, json.dumps(output))
+                    print(f"Stored error for job {job_id}: {output}")
 
         # Sleep for a bit
         time.sleep(settings.SERVER_SLEEP)
