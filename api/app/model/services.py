@@ -9,12 +9,7 @@ from .. import settings
 # TODO
 # Connect to Redis and assign to variable `db``
 # Make use of settings.py module to get Redis settings like host, port, etc.
-db = redis.Redis(
-    host=settings.REDIS_IP,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB_ID,
-    decode_responses=False
-)
+db = redis.Redis(host= settings.REDIS_IP, port= settings.REDIS_PORT, db= settings.REDIS_DB_ID, decode_responses= False)
 
 
 async def model_predict(image_name):

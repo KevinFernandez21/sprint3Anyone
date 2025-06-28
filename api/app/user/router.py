@@ -10,23 +10,33 @@ from . import schema, services, validator
 router = APIRouter(tags=["Users"], prefix="/user")
 
 
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user_registration(
     request: schema.User, database: Session = Depends(db.get_db)
 ):
-    # TODO: Implement the create_user_registration endpoint
+    """
+    Create a new user if the email does not already exist.
+    """
+        # TODO: Implement the create_user_registration endpoint
     # Make sure to:
-    #  1. Verify the user email doesn't already exist, see `verify_email_exist()` function under `validator.py`
+    #  1. Verify the user email doesn't already exist, see ⁠ verify_email_exist() ⁠ function under ⁠ validator.py ⁠
     #  2. If the email already exists, raise a 400 HTTPException
-    #  3. If the email doesn't exist, create a new user, see `new_user_register()` function under `services.py`
+    #  3. If the email doesn't exist, create a new user, see ⁠ new_user_register() ⁠ function under ⁠ services.py ⁠
     #  4. Return the new user object created
-    if await validator.verify_email_exist(request.email, database):
+    
+    # 1. Verificar si el email ya existe
+    email_exists = await validator.verify_email_exist(request.email, database)
+    if email_exists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists",
+            detail="Email already registered"
         )
+
+    # 2. Crear nuevo usuario
     new_user = await services.new_user_register(request, database)
 
+    # 3. Devolver usuario creado
     return new_user
 
 

@@ -34,12 +34,15 @@ def login(username: str, password: str) -> Optional[str]:
         "client_id": "",
         "client_secret": "",
     }
-    response = requests.post(url, headers=headers, data=data)
-    if response.status_code == 200:
-        return response.json()["access_token"]
-    else:
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        if response.status_code == 200:
+            return response.json()["access_token"]
+        else:
+            return None
+    except Exception as e:
+        print(f"An error occurred while trying to log in: {e}")
         return None
-
 
 class APIUser(HttpUser):
     wait_time = between(1, 5)

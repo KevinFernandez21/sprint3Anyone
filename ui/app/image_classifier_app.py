@@ -20,18 +20,16 @@ def login(username: str, password: str) -> Optional[str]:
     # TODO: Implement the login function
     # Steps to Build the `login` Function:
     #  1. Construct the API endpoint URL using `API_BASE_URL` and `/login`.
-    try: 
-
-        url = f"{API_BASE_URL}/login"
+    url = f"{API_BASE_URL}/login"
     #  2. Set up the request headers with `accept: application/json` and
     #     `Content-Type: application/x-www-form-urlencoded`.
-        headers = {
+    headers = {
             "accept": "application/json",
             "Content-Type": "application/x-www-form-urlencoded",
         }
     #  3. Prepare the data payload with fields: `grant_type`, `username`, `password`,
     #     `scope`, `client_id`, and `client_secret`.
-        data = {
+    data = {
             "grant_type": "",
             "username": username,
             "password": password,
@@ -41,28 +39,21 @@ def login(username: str, password: str) -> Optional[str]:
         }
     #  4. Use `requests.post()` to send the API request with the URL, headers,
     #     and data payload.
+    try: 
         response = requests.post(url, headers=headers, data=data)
     #  5. Check if the response status code is `200`.
         if response.status_code == 200:
     #  6. If successful, extract the token from the JSON response.
-            json_response = response.json()
-            token = json_response.get("access_token")
+            token = response.json().get("access_token")
     #  7. Return the token if login is successful,  otherwise return `None`.
-            if token:
-                return token
-            else:
-                st.error("Login failed: No token received.")
+            return token
         else:
             st.error(f"Login failed: {response.status_code} - {response.text}")
             return None
     #  8. Test the function with various inputs.
-    except requests.RequestException as e:
+    except requests.exceptions.RequestException as e:
         st.error(f"An error occurred while trying to log in: {e}")
         return None
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        return None
-    
 
 
 def predict(token: str, uploaded_file: Image) -> requests.Response:
@@ -81,16 +72,14 @@ def predict(token: str, uploaded_file: Image) -> requests.Response:
     try:
     #  1. Create a dictionary with the file data. The file should be a
     #     tuple with the file name and the file content.
-        uploaded_file.seek(0)  # Reset file pointer to the beginning
-        files = {
-            "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
-        }
-    #  2. Add the token to the headers.
+        url = f"{API_BASE_URL}/model/predict"
         headers = {
             "Authorization": f"Bearer {token}",
         }
-    #  3. Make a POST request to the predict endpoint.
-        url = f"{API_BASE_URL}/predict"
+        file_content = uploaded_file.getvalue()
+        files = {
+            "file": (uploaded_file.name, file_content)
+        }
         response = requests.post(url, headers=headers, files=files)
     #  4. Return the response.
         return response
@@ -124,22 +113,18 @@ def send_feedback(
     try: 
     # 1. Create a dictionary with the feedback data including feedback, score,
     #    predicted_class, and image_file_name.
-        data = {
+        url = f"{API_BASE_URL}/feedback"
+        headers = {
+            "Authorization": f"Bearer {token}",
+        }
+    # 3. Make a POST request to the feedback endpoint.
+        json_payload = {
             "feedback": feedback,
             "score": score,
             "predicted_class": prediction,
             "image_file_name": image_file_name,
         }
-        
-
-    # 2. Add the token to the headers.
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        }
-    # 3. Make a POST request to the feedback endpoint.
-        url = f"{API_BASE_URL}/feedback"
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=json_payload)
     # 4. Return the response.
         return response
     except requests.RequestException as e:
